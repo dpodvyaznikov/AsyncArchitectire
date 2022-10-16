@@ -32,3 +32,5 @@ def finish_task(db: Session, original_id):
     create_transaction(db, task.assignee, task.reward, task.title)
     db.delete(task)
     db.commit()
+
+
