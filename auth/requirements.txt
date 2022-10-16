@@ -1,0 +1,7 @@
+fastapi
+pydantic
+pyjwt==1.7.0
+sqlalchemy
+fastapi-jwt-auth
+uvicorn
+pika
