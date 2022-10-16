@@ -7,6 +7,8 @@ class User(BaseModel):
     is_active: bool
 
 class TaskCreate(BaseModel):
+    title: str
+    jira_id: str
     description: str
     status: str
 

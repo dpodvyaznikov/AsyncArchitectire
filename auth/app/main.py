@@ -13,6 +13,10 @@ from db import crud, models, schemas, SessionLocal, engine
 
 from routing import AuthPika
 
+from uuid import uuid4
+import json
+from schema_registry import validate
+
 models.Base.metadata.create_all(bind=engine)
 
 
@@ -123,7 +127,20 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), Authori
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     new_user = crud.create_user(db=db, user=user)
-    broker.send_event(routing_key='account.created', message=new_user.public_id)
+    message = {
+        "title": "Account.Created.v1",
+        "properties": {
+            "event_id": str(uuid4()),
+            "event_version": 1,
+            "producer": "auth.shuffle_tasks",
+            "data": {
+                "public_id": new_user.public_id
+            }
+        }
+    }
+    validate.validate_event(message, './schema_registry/auth', 'account.created.json')
+    print(message)
+    broker.send_event(routing_key='account.created', message=json.dumps(message))
     print(new_user.public_id)
     return new_user
 
@@ -132,12 +149,26 @@ def update_user(user_id: str, fields: schemas.UserUpdate, db: Session = Depends(
     Authorize.jwt_required()
     current_user_id = Authorize.get_jwt_subject()
     current_user = crud.get_user_by_public_id(db, public_id=current_user_id)
+    print(current_user.role)
     if current_user.role != 'admin':
         raise HTTPException(status_code=401, detail="Only admin can add or modify users")
 
     fields = {k:v for k,v in fields.dict().items() if v is not None}
     updated_user = crud.update_user(db, user_id, fields)
-    broker.send_event(routing_key='account.updated', message=updated_user.public_id)
+    message = {
+        "title": "Account.Updated.v1",
+        "properties": {
+            "event_id": str(uuid4()),
+            "event_version": 1,
+            "producer": "auth.shuffle_tasks",
+            "data": {
+                "public_id": updated_user.public_id
+            }
+        }
+    }
+    validate.validate_event(message, './schema_registry/auth', 'account.updated.json')
+    print(message)
+    broker.send_event(routing_key='account.updated', message=json.dumps(message))
     return updated_user
 
 @app.get("/users/{user_id}", response_model=schemas.User)

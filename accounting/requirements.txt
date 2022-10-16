@@ -1,0 +1,7 @@
+fastapi
+pydantic
+sqlalchemy
+uvicorn
+pika
+aio_pika
+numpy

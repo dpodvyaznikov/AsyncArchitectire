@@ -1,0 +1,15 @@
+{
+    "title": "Task.Created.v1",
+
+    "properties":
+    {
+        "event_id": "str",
+        "event_version": "int",
+        "producer": "str",
+        "data":
+        {
+            "id": "str"
+        }
+    }
+
+}
