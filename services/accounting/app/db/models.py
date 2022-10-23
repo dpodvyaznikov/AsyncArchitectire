@@ -11,7 +11,7 @@ class Transaction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     date = Column(String)
-    user_public_id = Column(String, unique=True)
+    user_public_id = Column(String)
     transaction = Column(Integer)
     transaction_type = Column(String)
     comment = Column(String)
@@ -23,7 +23,7 @@ class User(Base):
     email = Column(String, unique=True)
     public_id = Column(String, unique=True)
     role = Column(String)
-    is_active = Column(Boolean)
+    is_active = Column(Integer)
     balance = Column(Integer, default=0)
 
 class Task(Base):

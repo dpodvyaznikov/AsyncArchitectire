@@ -11,7 +11,7 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     public_id: str
-    is_active: bool
+    is_active: int
 
     class Config:
         orm_mode = True
@@ -21,7 +21,7 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     password: Optional[str] = None
     public_id: Optional[str] = None
-    is_active: Optional[bool] = None
+    is_active: Optional[int] = None
 
     class Config:
         orm_mode = True

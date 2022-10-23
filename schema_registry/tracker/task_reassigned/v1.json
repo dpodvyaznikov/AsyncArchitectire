@@ -8,7 +8,7 @@
         "producer": "str",
         "data":
         {
-            "id": "int",
+            "public_id": "str",
             "assignee": "str"
         }
     }

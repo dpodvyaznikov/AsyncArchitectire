@@ -17,13 +17,13 @@ class User(Base):
     email = Column(String, unique=True)
     public_id = Column(String, unique=True)
     role = Column(String)
-    is_active = Column(Boolean)
+    is_active = Column(Integer)
 
 class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    public_id = Column(String, generate_public_id)
+    public_id = Column(String, default=generate_public_id)
     title = Column(String)
     description =  Column(String)
     jira_id = Column(String)

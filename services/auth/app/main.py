@@ -91,7 +91,7 @@ def logout(Authorize: AuthJWT = Depends()):
     return {"msg":"Successfully logout"}
 
 @app.get('/user_info/', response_model=schemas.User)
-def protected(user_id: str, Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
+def protected(Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     Authorize.jwt_required()
     public_id = Authorize.get_jwt_subject()
     db_user = crud.get_user_by_public_id(db, public_id=public_id)
@@ -105,6 +105,11 @@ def protected(user_id: str, Authorize: AuthJWT = Depends(), db: Session = Depend
 #     return db_user
 
 ################## CRUD Stuff ########################
+
+@app.get("/all/")
+def get_all(db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
+    users = db.query(models.User).distinct().all()
+    return {'users': users}
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), Authorize: AuthJWT = Depends(), broker: AuthPika = Depends()):
@@ -183,7 +188,7 @@ def startup_event():
     with get_db_wrapper() as db:
         db_user = crud.get_user(db, user_id=1)
         if db_user is None:
-            admin = schemas.UserCreate(email='adminest@admin.com', password='sesurity', role='admin')
+            admin = schemas.UserCreate(email='a', password='b', role='admin')
             return crud.create_user(db=db, user=admin)
 
 if __name__ == '__main__':

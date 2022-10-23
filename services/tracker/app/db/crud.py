@@ -31,10 +31,10 @@ def create_task(db: Session, task: schemas.TaskCreate):
     return db_task
 
 def read_user_tasks(db: Session, user_id: str):
-    return db.query(models.Task).filter(models.Task.assignee==user_id).distinct()
+    return db.query(models.Task).filter(models.Task.assignee==user_id).distinct().all()
 
 def finish_task(db: Session, task_id: int):
-    db_task = db.query(models.Task).filter(models.Task.id==task_id).first()
+    db_task = db.query(models.Task).filter(models.Task.public_id==task_id).first()
     db_task.status = 'finished'
     db.commit()
     db.refresh(db_task)

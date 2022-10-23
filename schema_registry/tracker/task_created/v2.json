@@ -8,7 +8,7 @@
         "producer": "str",
         "data":
         {
-            "id": "int",
+            "public_id": "str",
             "title": "str",
             "jira_id": "str",
             "description": "str",

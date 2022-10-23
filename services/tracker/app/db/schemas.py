@@ -5,7 +5,7 @@ class User(BaseModel):
     email: str
     public_id: str
     role: str
-    is_active: bool
+    is_active: int
 
 class TaskCreate(BaseModel):
     title: str

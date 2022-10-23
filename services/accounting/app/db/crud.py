@@ -7,7 +7,7 @@ def cur_date():
     return datetime.now().strftime("%d.%m.%Y")
 
 def create_user(db: Session, user: schemas.User): 
-    user = models.User(public_id=user.public_id, role=user.role, status=user.status)
+    user = models.User(public_id=user.public_id, role=user.role, is_active=user.is_active)
     db.add(user)
     db.commit()
 
@@ -45,7 +45,7 @@ def finish_task(db: Session, public_id, status):
     db_task.status = status
     db.commit()
     db.refresh(db_task)
-    create_transaction(db, db_task.assignee, db_task.reward, 'TaskFinished' db_task.title)
+    create_transaction(db, db_task.assignee, db_task.reward, 'TaskFinished', db_task.title)
     db.commit()
 
 def reassign_task(db: Session, public_id, assignee):
@@ -53,7 +53,7 @@ def reassign_task(db: Session, public_id, assignee):
     db_task.assignee = assignee
     db.commit()
     db.refresh(db_task)
-    create_transaction(db, db_task.assignee, db_task.reward, 'TaskAssigned', db_task.title)
+    create_transaction(db, db_task.assignee, db_task.cost, 'TaskAssigned', db_task.title)
     db.commit()
 
 def read_user_balance(db: Session, user_public_id):
@@ -65,13 +65,13 @@ def read_user_balance(db: Session, user_public_id):
 def read_user_log(db: Session, user_public_id):
     today = cur_date()
     log = (db.query(models.Transaction)
-             .filter(models.Transaction.date==today and models.Transaction.user_public_id==user_public_id)
-             .distinct())
+             .filter(models.Transaction.date==today).filter(models.Transaction.user_public_id==user_public_id)
+             .distinct().all())
     return log
 
 def read_log(db: Session, date=None):
     date = cur_date() if date is None else date
     logs = (db.query(models.Transaction)
              .filter(models.Transaction.date==date and models.Transaction.transaction_type!='BalancePaid')
-             .distinct())
+             .distinct().all())
     return logs

@@ -19,4 +19,4 @@ if __name__ == "__main__":
     }
 
     validate.validate_event(message, './schema_registry/tracker/task_finished', 'v1.json')
-    AccountingPika.send_event(routing_key='task.finished', message=json.dumps(message))
+    AccountingPika.send_event(routing_key='accounting.day_ended', message=json.dumps(message))

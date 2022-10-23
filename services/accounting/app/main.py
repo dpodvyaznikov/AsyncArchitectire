@@ -1,4 +1,4 @@
-from email.message import EmailMessage
+from ast import literal_eval
 from http import client
 from importlib.resources import contents
 from pyexpat.errors import messages
@@ -48,14 +48,20 @@ def get_current_user(request: Request):
         cookie_authorization: str = request.cookies.get("access_token_cookie")
         cookies = httpx.Cookies()
         cookies.set('access_token_cookie', cookie_authorization)
-        with httpx.AsyncClient() as client:
-            user_info = client.get('auth:8080/user_info', cookies=cookies)
-        print(user_info)
+        response = httpx.get('http://auth:8080/user_info/', cookies=cookies)
+        user_info = literal_eval(response.content.decode())
     except Exception as e:
+        print(e)
         response = RedirectResponse(url='auth:8080/docs#/default/login_login_post')
         return response
     return user_info
 
+@app.get("/all/")
+def get_all(db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
+    tasks = db.query(models.Task).distinct().all()
+    users = db.query(models.User).distinct().all()
+    logs =  db.query(models.Transaction).distinct().all()
+    return {'tasks': tasks, 'users': users, 'logs': logs}
 
 @app.post("/report")
 def show_accounting(request: Request, db: Session = Depends(get_db)):
@@ -65,21 +71,10 @@ def show_accounting(request: Request, db: Session = Depends(get_db)):
         logs = crud.read_log(db)
         management_income = -1 * sum([t.transaction for t in logs])
         response['management_income'] = management_income
-    else:
-        response['user_balance'] = crud.read_user_balance(user_info.public_id)
-        response['user_log'] = crud.read_user_log(user_info.public_id)
+    response['user_balance'] = crud.read_user_balance(db, user_info['public_id'])
+    response['user_log'] = crud.read_user_log(db, user_info['public_id'])
 
     return response
-
-@app.post("/accounting")
-def show_accounting(request: Request, db: Session = Depends(get_db)):
-    user_info = get_current_user(request)
-    if user_info['role'] in ('admin', 'accountant'):
-        pass
-    else:
-        pass
-
-
 
 
 @app.on_event('startup')
@@ -89,5 +84,5 @@ async def startup():
     await task
 
 if __name__ == '__main__':
-    uvicorn.run('main:app', host="0.0.0.0", port=8081, workers=1,
+    uvicorn.run('main:app', host="0.0.0.0", port=8082, workers=1,
                 reload=True, debug=True, log_level="debug")
