@@ -7,11 +7,11 @@ NotImplemented
 
 ### Event Storming
 
-![Event Storming](hw1/EventStorming.jpg "Event Storming")
+![Event Storming](images/EventStorming.jpg "Event Storming")
 
 ### Domains
 
-![Domains](hw1/Domains.jpg "Domains")
+![Domains](images/Domains.jpg "Domains")
 
 ### Services & Communication
 
@@ -19,7 +19,7 @@ NotImplemented
 Также, внутри одного сервиса у меня получилось CUD взаимодействие меджу разными доменами. Это произошло, так как между этими доменами очень сильно пересечение по данным, и обновление данных в Accounting Domain : AuditLog ( источник правды о транзакциях) используется для обновления истории самых дорогих тасок в Analytics Domain : ExpensiveTasks.
 Возможно, Analytics Domain : ExpensiveTasks как сущность не нужна вообще, но мне она показалась нужной и удобной, чтобы не делать перерасачеты по истории Accounting Domain : AuditLog на лету при запросе аналитики.
 
-![ServicesAndComms](hw1/Services%26Communications.jpg "ServicesAndComms")
+![ServicesAndComms](images/Services%26Communications.jpg "ServicesAndComms")
 
 
 ## HW # 2
