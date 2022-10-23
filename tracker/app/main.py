@@ -11,6 +11,7 @@ import uvicorn
 import httpx
 import asyncio
 import json
+import numpy as np
 from uuid import uuid4
 from schema_registry import validate
 
@@ -61,52 +62,67 @@ def create_task(task: schemas.TaskCreate, request: Request, db: Session = Depend
     _ = get_current_user(request)
     new_task = crud.create_task(db=db, task=task)
     message = {
-        "title": "Task.Created.v1",
+        "title": "Task.Created.v2",
         "properties": {
             "event_id": str(uuid4()),
             "event_version": 1,
             "producer": "tracker.create_task",
             "data": {
-                "id": new_task.id
+                "public_id": new_task.public_id,
+                "title": new_task.title,
+                "jira_id": new_task.jira_id,
+                "description": new_task.description,
+                "status": new_task.status,
+                "assignee": new_task.assignee
             }
         }
     }
     print(message)
-    validate.validate_event(message, './schema_registry/tracker', 'task.created.json')
+    validate.validate_event(message, './schema_registry/tracker/task_created', 'v2.json')
     request.app.broker.send_event(routing_key='task.created', message=json.dumps(message))
     return new_task
-
-@app.get("/task/{id}")
-def get_task(id: int, request: Request, db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
-    _ = get_current_user(request)
-    task = crud.read_task(db=db, task_id=id)
-    return task
 
 @app.post("/task/shuffle")
 def shuffle_tasks(request: Request, db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
     user_info = get_current_user(request)
     if user_info['role'] not in ('admin', 'manager'):
         return JSONResponse(status_code=403, content={'message': 'Only Admins and Managers can shuffle' })
-    crud.shuffle_tasks(db)
-    message = {
-        "title": "Tasks.Shuffled.v1",
-        "properties": {
-            "event_id": str(uuid4()),
-            "event_version": 1,
-            "producer": "tracker.shuffle_tasks",
-            "data": {}
+
+    tasks = db.query(models.Task).filter(models.Task.status != 'finished').distinct()
+    assignees = np.random.choice(db.query(models.User).filter(models.User.role != 'manager').distinct(), len(tasks))
+    for task, assignee in zip(tasks, assignees):
+        setattr(task, 'assignee', assignee.public_id)
+        db.commit()
+        message = {
+            "title": "Task.Reassigned.v1",
+            "properties": {
+                "event_id": str(uuid4()),
+                "event_version": 1,
+                "producer": "tracker.shuffle_tasks",
+                "data": {
+                    "public_id": task.public_id,
+                    "assignee": assignee.public_id
+                }
+            }
         }
-    }
-    print(message)
-    validate.validate_event(message, './schema_registry/tracker', 'tasks.shuffled.json')
-    request.app.broker.send_event(routing_key='task.shuffled', message=json.dumps(message))
+        validate.validate_event(message, './schema_registry/tracker/task_reassigned', 'v1.json')
+        request.app.broker.send_event(routing_key='task.shuffled', message=json.dumps(message))
     return JSONResponse(status_code=200, content={'message': f'Tasks have been shuffled'})
+
+
+@app.get("/task/")
+def create_task(request: Request, db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
+    user_info = get_current_user(request)
+    tasks = crud.read_user_tasks(db=db, user_id=user_info.public_id)
+    return tasks
 
 @app.post("/task/finish/{task_id}")
 def finish_task(task_id: int, request: Request, db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
     user_info = get_current_user(request)
-    task = crud.read_task(task_id)
-    crud.finish_task(db=db, task_id=task_id, user_public_id=user_info.public_id)
+    task = db.query(models.Task).filter(models.Task.id==task_id).first()
+    if user_info.public_id != task.assignee:
+        return JSONResponse(status_code=403, content={'message': 'Only Assignee can finish own tasks' })
+    db_task = crud.finish_task(db=db, task_id=task_id)
     message = {
         "title": "Task.Finished.v1",
         "properties": {
@@ -114,12 +130,12 @@ def finish_task(task_id: int, request: Request, db: Session = Depends(get_db)):#
             "event_version": 1,
             "producer": "tracker.finish_task",
             "data": {
-                "id": task_id
+                "public_id": db_task.public_id,
+                "status": db_task.status
             }
         }
     }
-    print(message)
-    validate.validate_event(message, './schema_registry/tracker', 'tracker.finished.json')
+    validate.validate_event(message, './schema_registry/tracker/task_finished', 'v1.json')
     request.app.broker.send_event(routing_key='task.finished', message=json.dumps(message))
     return JSONResponse(status_code=200, content={'message': f'Task {task.title} has been finished'})
 

@@ -1,0 +1,20 @@
+{
+    "title": "Task.Created.v2",
+
+    "properties":
+    {
+        "event_id": "str",
+        "event_version": "int",
+        "producer": "str",
+        "data":
+        {
+            "id": "int",
+            "title": "str",
+            "jira_id": "str",
+            "description": "str",
+            "status": "str",
+            "assignee": "str"
+        }
+    }
+
+}

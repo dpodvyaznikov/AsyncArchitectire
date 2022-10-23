@@ -87,17 +87,8 @@ def refresh(Authorize: AuthJWT = Depends()):
 @app.delete('/logout')
 def logout(Authorize: AuthJWT = Depends()):
     Authorize.jwt_required()
-
     Authorize.unset_jwt_cookies()
     return {"msg":"Successfully logout"}
-
-@app.get('/protected', response_model=schemas.User)
-def protected(Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
-    Authorize.jwt_required()
-
-    public_id = Authorize.get_jwt_subject()
-    db_user = crud.get_user_by_public_id(db, public_id=public_id)
-    return db_user
 
 @app.get('/user_info/', response_model=schemas.User)
 def protected(user_id: str, Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
@@ -106,12 +97,12 @@ def protected(user_id: str, Authorize: AuthJWT = Depends(), db: Session = Depend
     db_user = crud.get_user_by_public_id(db, public_id=public_id)
     return db_user
 
-@app.get('/user_info/{user_id}', response_model=schemas.User)
-def protected(user_id: str, Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
-    Authorize.jwt_required()
-    print(f'from userinfo: {user_id}')
-    db_user = crud.get_user_by_public_id(db, public_id=user_id)
-    return db_user
+# @app.get('/user_info/{user_id}', response_model=schemas.User)
+# def protected(user_id: str, Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
+#     Authorize.jwt_required()
+#     print(f'from userinfo: {user_id}')
+#     db_user = crud.get_user_by_public_id(db, public_id=user_id)
+#     return db_user
 
 ################## CRUD Stuff ########################
 
@@ -134,14 +125,15 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), Authori
             "event_version": 1,
             "producer": "auth.shuffle_tasks",
             "data": {
-                "public_id": new_user.public_id
+                "email": new_user.email,
+                "public_id": new_user.public_id,
+                "role": new_user.role,
+                "is_active": new_user.is_active
             }
         }
     }
-    validate.validate_event(message, './schema_registry/auth', 'account.created.json')
-    print(message)
+    validate.validate_event(message, './schema_registry/auth/account_created', 'v1.json')
     broker.send_event(routing_key='account.created', message=json.dumps(message))
-    print(new_user.public_id)
     return new_user
 
 @app.post("/users/{user_id}", response_model=schemas.User)
@@ -162,22 +154,24 @@ def update_user(user_id: str, fields: schemas.UserUpdate, db: Session = Depends(
             "event_version": 1,
             "producer": "auth.shuffle_tasks",
             "data": {
-                "public_id": updated_user.public_id
+                "email": updated_user.email,
+                "public_id": updated_user.public_id,
+                "role": updated_user.role,
+                "is_active": updated_user.is_active
             }
         }
     }
-    validate.validate_event(message, './schema_registry/auth', 'account.updated.json')
-    print(message)
+    validate.validate_event(message, './schema_registry/auth/account_updated', 'v1.json')
     broker.send_event(routing_key='account.updated', message=json.dumps(message))
     return updated_user
 
-@app.get("/users/{user_id}", response_model=schemas.User)
-def read_user(user_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-    Authorize.jwt_required()
-    db_user = crud.get_user(db, user_id=user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
+# @app.get("/users/{user_id}", response_model=schemas.User)
+# def read_user(user_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+#     Authorize.jwt_required()
+#     db_user = crud.get_user(db, user_id=user_id)
+#     if db_user is None:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     return db_user
 
 ############ Dirty hack to emulate dependency injection in app startup event ################
 

@@ -1,5 +1,5 @@
 {
-    "title": "Account.Created.v1",
+    "title": "Tasks.Reassigned.v1",
 
     "properties":
     {
@@ -8,7 +8,8 @@
         "producer": "str",
         "data":
         {
-            "public_id": "str"
+            "id": "int",
+            "assignee": "str"
         }
     }
 

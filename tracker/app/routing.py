@@ -5,25 +5,28 @@ import json
 from db import crud, models, schemas, SessionLocal, engine
 
 
-async def get_user(public_id):
-    data = {'email': 'adminest@admin.com', 'password':'sesurity'}
-    async with httpx.AsyncClient() as client:
-        response = await client.post('http://auth:8080/login', json=data)
-    cookie_authorization = response.cookies.get("access_token_cookie")
-    cookies = httpx.Cookies()
-    cookies.set('access_token_cookie', cookie_authorization)
-    async with httpx.AsyncClient() as client:
-        user_info = await client.get(f'http://auth:8080/user_info/{public_id}', cookies=cookies)
-    return user_info.json()
+# async def get_user(public_id):
+#     data = {'email': 'adminest@admin.com', 'password':'sesurity'}
+#     async with httpx.AsyncClient() as client:
+#         response = await client.post('http://auth:8080/login', json=data)
+#     cookie_authorization = response.cookies.get("access_token_cookie")
+#     cookies = httpx.Cookies()
+#     cookies.set('access_token_cookie', cookie_authorization)
+#     async with httpx.AsyncClient() as client:
+#         user_info = await client.get(f'http://auth:8080/user_info/{public_id}', cookies=cookies)
+#     return user_info.json()
 
 async def process_incoming(message):
+    print(message)
     body = json.loads(message.body)
-    id = body["properties"]["data"]["public_id"]
-    print(f"Alleged body: {body}")
-    user = await get_user(id)
-    print(user)
-    db = SessionLocal()
-    crud.create_user(db=db, user=schemas.User(**user))
+    if 'Account.Created' in body['title']:
+        data = body["properties"]["data"]
+        db = SessionLocal()
+        crud.create_user(db=db, user=schemas.User(**data))
+    if 'Account.Updated' in body['title']:
+        data = body["properties"]["data"]
+        db = SessionLocal()
+        crud.update_user(db=db, user=schemas.User(**data))
     await message.ack()
 
 class TrackerPika:

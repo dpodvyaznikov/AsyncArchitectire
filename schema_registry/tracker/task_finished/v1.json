@@ -1,5 +1,5 @@
 {
-    "title": "Account.Updated.v1",
+    "title": "Task.Finished.v1",
 
     "properties":
     {
@@ -8,7 +8,8 @@
         "producer": "str",
         "data":
         {
-            "public_id": "str"
+            "id": "str",
+            "status": "str"
         }
     }
 
