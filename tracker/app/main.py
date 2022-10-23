@@ -1,4 +1,7 @@
+from email.message import EmailMessage
 from http import client
+from importlib.resources import contents
+from pyexpat.errors import messages
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 # from fastapi_jwt_auth import AuthJWT
@@ -7,6 +10,9 @@ from pydantic import BaseModel
 import uvicorn
 import httpx
 import asyncio
+import json
+from uuid import uuid4
+from schema_registry import validate
 
 from sqlalchemy.orm import Session
 from db import crud, models, schemas, SessionLocal, engine
@@ -50,35 +56,73 @@ def get_current_user(request: Request):
         return response
     return user_info
 
-
-
-@app.post("/task/", response_model=schemas.User)
+@app.post("/task/")
 def create_task(task: schemas.TaskCreate, request: Request, db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
     _ = get_current_user(request)
     new_task = crud.create_task(db=db, task=task)
-    request.app.broker.send_event(routing_key='task.created', message=new_task.public_id)
+    message = {
+        "title": "Task.Created.v1",
+        "properties": {
+            "event_id": str(uuid4()),
+            "event_version": 1,
+            "producer": "tracker.create_task",
+            "data": {
+                "id": new_task.id
+            }
+        }
+    }
+    print(message)
+    validate.validate_event(message, './schema_registry/tracker', 'task.created.json')
+    request.app.broker.send_event(routing_key='task.created', message=json.dumps(message))
     return new_task
 
-# @app.post("/users/{user_id}", response_model=schemas.User)
-# def update_user(user_id: str, fields: schemas.UserUpdate, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-#     Authorize.jwt_required()
-#     current_user_id = Authorize.get_jwt_subject()
-#     current_user = crud.get_user_by_public_id(db, public_id=current_user_id)
-#     if current_user.role != 'admin':
-#         raise HTTPException(status_code=401, detail="Only admin can add or modify users")
+@app.get("/task/{id}")
+def get_task(id: int, request: Request, db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
+    _ = get_current_user(request)
+    task = crud.read_task(db=db, task_id=id)
+    return task
 
-#     fields = {k:v for k,v in fields.dict().items() if v is not None}
-#     updated_user = crud.update_user(db, user_id, fields)
-#     broker.send_event(routing_key='account.updated', message=updated_user.public_id)
-#     return updated_user
+@app.post("/task/shuffle")
+def shuffle_tasks(request: Request, db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
+    user_info = get_current_user(request)
+    if user_info['role'] not in ('admin', 'manager'):
+        return JSONResponse(status_code=403, content={'message': 'Only Admins and Managers can shuffle' })
+    crud.shuffle_tasks(db)
+    message = {
+        "title": "Tasks.Shuffled.v1",
+        "properties": {
+            "event_id": str(uuid4()),
+            "event_version": 1,
+            "producer": "tracker.shuffle_tasks",
+            "data": {}
+        }
+    }
+    print(message)
+    validate.validate_event(message, './schema_registry/tracker', 'tasks.shuffled.json')
+    request.app.broker.send_event(routing_key='task.shuffled', message=json.dumps(message))
+    return JSONResponse(status_code=200, content={'message': f'Tasks have been shuffled'})
 
-# @app.get("/users/{user_id}", response_model=schemas.User)
-# def read_user(user_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-#     Authorize.jwt_required()
-#     db_user = crud.get_user(db, user_id=user_id)
-#     if db_user is None:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     return db_user
+@app.post("/task/finish/{task_id}")
+def finish_task(task_id: int, request: Request, db: Session = Depends(get_db)):#, Authorize: AuthJWT = Depends(),):
+    user_info = get_current_user(request)
+    task = crud.read_task(task_id)
+    crud.finish_task(db=db, task_id=task_id, user_public_id=user_info.public_id)
+    message = {
+        "title": "Task.Finished.v1",
+        "properties": {
+            "event_id": str(uuid4()),
+            "event_version": 1,
+            "producer": "tracker.finish_task",
+            "data": {
+                "id": task_id
+            }
+        }
+    }
+    print(message)
+    validate.validate_event(message, './schema_registry/tracker', 'tracker.finished.json')
+    request.app.broker.send_event(routing_key='task.finished', message=json.dumps(message))
+    return JSONResponse(status_code=200, content={'message': f'Task {task.title} has been finished'})
+
 
 ############ Dirty hack to emulate dependency injection in app startup event ################
 

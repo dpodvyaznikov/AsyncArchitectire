@@ -2,8 +2,20 @@ import pika
 import aio_pika
 import httpx
 import json
+import numpy as np
 from db import crud, models, schemas, SessionLocal, engine
 
+
+async def get_task(id):
+    data = {'email': 'adminest@admin.com', 'password':'sesurity'}
+    async with httpx.AsyncClient() as client:
+        response = await client.post('http://auth:8080/login', json=data)
+    cookie_authorization = response.cookies.get("access_token_cookie")
+    cookies = httpx.Cookies()
+    cookies.set('access_token_cookie', cookie_authorization)
+    async with httpx.AsyncClient() as client:
+        task_info = await client.get(f'http://tracker:8081/task/{id}', cookies=cookies)
+    return task_info.json()
 
 async def get_user(public_id):
     data = {'email': 'adminest@admin.com', 'password':'sesurity'}
@@ -19,11 +31,24 @@ async def get_user(public_id):
 async def process_incoming(message):
     body = json.loads(message.body)
     id = body["properties"]["data"]["public_id"]
-    print(f"Alleged body: {body}")
-    user = await get_user(id)
-    print(user)
-    db = SessionLocal()
-    crud.create_user(db=db, user=schemas.User(**user))
+    if 'Account.Created' in body['title']:
+        ...
+    if 'Account.Updated' in body['title']:
+        ...
+    if 'Task.Created' in body['title']:
+        task = await get_task(id)
+        print(task)
+        db = SessionLocal()
+        cost, reward = np.random.randint(-10,-20), np.random.randint(20,40)
+        crud.create_task(db, task.id, task.title, cost, reward, task.assignee)
+    if 'Task.Finished' in body['title']:
+        db = SessionLocal()
+        crud.finish_task(db, id)
+    if 'Task.Shuffled' in body['title']:
+        task = await get_task(id)
+        print(task)
+        db = SessionLocal()
+        crud.create_task(db=db, )
     await message.ack()
 
 class TrackerPika:
