@@ -1,0 +1,16 @@
+{
+    "title": "Task.Finished.v1",
+
+    "properties":
+    {
+        "event_id": "str",
+        "event_version": "int",
+        "producer": "str",
+        "data":
+        {
+            "public_id": "str",
+            "status": "str"
+        }
+    }
+
+}
